@@ -6,7 +6,7 @@ import requests
 # Set page configuration
 st.set_page_config(page_title="Label Generator", layout="centered")
 
-# NoCodeAPI endpoint (replace with your actual URL or use Streamlit secrets)
+# NoCodeAPI endpoint https://v1.nocodeapi.com/mcorvasce/google_sheets/hHZulRpNWJmGYkoi
 NOCODE_API_URL = st.secrets["nocode_api_url"]
 
 # Formula options
