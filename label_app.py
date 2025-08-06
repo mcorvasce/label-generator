@@ -53,4 +53,18 @@ if submitted:
         payload = {
             "data": [[now, formula, weight, net_weight, count]]
         }
-        response = requests.post(NOCODE
+        response = requests.post(NOCODE_API_URL, json=payload)
+        if response.status_code == 200:
+            st.success("✅ Label generated and logged successfully.")
+        else:
+            st.warning("⚠️ Label created, but failed to log to sheet.")
+    except Exception as e:
+        st.warning(f"⚠️ Error logging to sheet: {e}")
+
+    # Download button
+    st.download_button(
+        label="Download 4x6 Label PDF",
+        data=pdf_output,
+        file_name=f"label_{formula}_{now}.pdf",
+        mime="application/pdf"
+    )
