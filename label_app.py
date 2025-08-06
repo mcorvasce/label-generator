@@ -3,13 +3,13 @@ from fpdf import FPDF
 import datetime
 import requests
 
-# Set page configuration
 st.set_page_config(page_title="Label Generator", layout="centered")
+st.title("📦 4x6 Label Generator")
 
-# NoCodeAPI endpoint https://v1.nocodeapi.com/mcorvasce/google_sheets/hHZulRpNWJmGYkoi
+# NoCodeAPI endpoint (from Streamlit secrets)
 NOCODE_API_URL = st.secrets["nocode_api_url"]
 
-# Formula options
+# Dropdown options
 formulas = [
     "Almost Perfect Citrus Carrot", "Apple Celery", "Better Mood Shot - Functional Mother",
     "Blue Sipper", "Breastfeeding - Functional Mother", "Calm - Bridal", "Celery Juice",
@@ -24,13 +24,33 @@ formulas = [
     "Vanilla Cashew", "Yellow Sipper"
 ]
 
-# Title
-st.title("📦 4x6 Label Generator")
+# Form for user inputs
+with st.form("label_form"):
+    formula = st.selectbox("Formula Name", formulas)
+    weight = st.text_input("Weight of One Bottle (lbs)", placeholder="e.g., 2.3")
+    net_weight = st.text_input("Bin Net Weight (lbs)", placeholder="e.g., 524")
+    count = st.text_input("Bottle Count", placeholder="e.g., 228")
+    submitted = st.form_submit_button("Generate Label")
 
-# Input form
-formula = st.selectbox("Formula Name", formulas)
-weight = st.text_input("Weight of One Bottle (lbs)", placeholder="e.g., 2.3")
-net_weight = st.text_input("Bin Net Weight (lbs)", placeholder="e.g., 524")
-count = st.text_input("Bottle Count", placeholder="e.g., 228")
+if submitted:
+    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
 
-# C
+    # Generate PDF label
+    pdf = FPDF("P", "in", (4, 6))
+    pdf.add_page()
+    pdf.set_font("Arial", size=12)
+
+    pdf.cell(0, 0.4, f"Formula: {formula}", ln=1)
+    pdf.cell(0, 0.4, f"Bottle Weight: {weight} lbs", ln=1)
+    pdf.cell(0, 0.4, f"Bin Net Weight: {net_weight} lbs", ln=1)
+    pdf.cell(0, 0.4, f"Bottle Count: {count}", ln=1)
+    pdf.cell(0, 0.4, f"Date: {now}", ln=1)
+
+    pdf_output = pdf.output(dest="S").encode("latin-1")
+
+    # Log to Google Sheet via NoCodeAPI
+    try:
+        payload = {
+            "data": [[now, formula, weight, net_weight, count]]
+        }
+        response = requests.post(NOCODE
