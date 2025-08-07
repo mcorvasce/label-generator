@@ -45,7 +45,7 @@ if "clear_form" not in st.session_state:
 
 # Handle clearing
 if st.session_state.clear_form:
-    st.session_state.formula_name = formula_names[0]
+    st.session_state.formula_name = None
     st.session_state.bottle_count = 0
     st.session_state.weight_per_bottle = 0.0
     st.session_state.bin_weight = 0.0
@@ -53,13 +53,25 @@ if st.session_state.clear_form:
     st.session_state.clear_form = False
 
 # Inputs
-formula_name = st.selectbox("Formula Name (Nombre de la Fórmula)", formula_names, key="formula_name")
+formula_name = st.selectbox(
+    "Formula Name (Nombre de la Fórmula)",
+    options=["Choose Flavor (Elija el Sabor)"] + formula_names,
+    index=0,
+    key="formula_name"
+)
+
+if formula_name == "Choose Flavor (Elija el Sabor)":
+    st.warning("⚠️ Please select a valid formula name.")
+    valid_selection = False
+else:
+    valid_selection = True
+
 bottle_count = st.number_input("Bottle Count (Cantidad de Botellas)", min_value=0, step=1, key="bottle_count")
 weight_per_bottle = st.number_input("Weight per Bottle (Peso por Botella, lbs)", min_value=0.0, step=0.01, format="%.2f", key="weight_per_bottle")
 bin_weight = st.number_input("Bin Gross Weight (Peso Bruto del Bin, lbs)", min_value=0.0, step=0.1, format="%.2f", key="bin_weight")
 
 # Generate Label
-if st.button("Generate Label / Generar Etiqueta"):
+if st.button("Generate Label / Generar Etiqueta") and valid_selection:
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     width, height = landscape((6 * inch, 4 * inch))
@@ -119,12 +131,12 @@ if st.button("Generate Label / Generar Etiqueta"):
     st.session_state.label_ready = True
     st.success("✅ Label created and data saved! / Etiqueta creada y datos guardados")
 
-# Show download + reset buttons
+# Show download + reset
 if st.session_state.label_ready and os.path.exists(PDF_FILE):
     with open(PDF_FILE, "rb") as f:
         st.download_button("📄 Download Label / Descargar Etiqueta", f, file_name="label.pdf")
 
-    st.markdown("✅ After printing, click below to start the next label:")
+    st.markdown("✅ After printing, click below to start the next label  \n✅ **Después de imprimir, haga clic abajo para comenzar la siguiente etiqueta**")
     if st.button("➡️ Start Next Label / Comenzar Siguiente Etiqueta"):
         st.session_state.clear_form = True
         st.rerun()
