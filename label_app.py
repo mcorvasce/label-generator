@@ -5,11 +5,11 @@ import datetime
 import pandas as pd
 import os
 
-# Output files
+# Files
 CSV_FILE = "label_log.csv"
 PDF_FILE = "label.pdf"
 
-# Streamlit setup
+# App config
 st.set_page_config(page_title="Label Generator", layout="centered")
 st.title("📦 Bottle Bin Label Generator / Generador de Etiquetas para Bines")
 
@@ -22,10 +22,10 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Dropdown values
+# Formula options
 formula_names = [
-    "AP Citrus Carrot", "Apple Celery", "Better Mood Shot - FM",
-    "Blue Sipper", "Breastfeeding - FM", "Calm - Bridal", "Celery Juice",
+    "Almost Perfect Citrus Carrot", "Apple Celery", "Better Mood Shot - Functional Mother",
+    "Blue Sipper", "Breastfeeding - Functional Mother", "Calm - Bridal", "Celery Juice",
     "Chocolate Cashew", "Chocolate Protein", "Citrus Carrot", "Citrus Mint",
     "Clementine Creamsicle", "Cookies & Cream", "Cool Greens", "Craving Crusher Shot",
     "Deblot - Bridal", "Detox - Bridal", "Energy - Bridal", "Ginger Turmeric", "Green Sipper",
@@ -37,67 +37,40 @@ formula_names = [
     "Vanilla Cashew", "Yellow Sipper"
 ]
 
-# Initialize session state defaults
-for field in ["formula_name", "bottle_count", "weight_per_bottle", "bin_weight", "generated"]:
-    if field not in st.session_state:
-        st.session_state[field] = None if field == "formula_name" else 0.0 if "weight" in field else 0
+# Session state init
+defaults = {
+    "formula_name": formula_names[0],
+    "bottle_count": 0,
+    "weight_per_bottle": 0.0,
+    "bin_weight": 0.0,
+    "label_ready": False
+}
+for key, val in defaults.items():
+    if key not in st.session_state:
+        st.session_state[key] = val
 
-# Clear inputs if label was just generated
-if st.session_state.generated:
-    st.session_state.formula_name = None
-    st.session_state.bottle_count = 0
-    st.session_state.weight_per_bottle = 0.0
-    st.session_state.bin_weight = 0.0
-    st.session_state.generated = False
+# Inputs
+formula_name = st.selectbox("Formula Name (Nombre de la Fórmula)", formula_names, index=formula_names.index(st.session_state.formula_name))
+bottle_count = st.number_input("Bottle Count (Cantidad de Botellas)", min_value=0, step=1, value=int(st.session_state.bottle_count))
+weight_per_bottle = st.number_input("Weight per Bottle (Peso por Botella, lbs)", min_value=0.0, step=0.01, format="%.2f", value=float(st.session_state.weight_per_bottle))
+bin_weight = st.number_input("Bin Gross Weight (Peso Bruto del Bin, lbs)", min_value=0.0, step=0.1, format="%.2f", value=float(st.session_state.bin_weight))
 
-# Input fields (bilingual)
-formula_name = st.selectbox(
-    "Formula Name (Nombre de la Fórmula)",
-    formula_names,
-    index=formula_names.index(st.session_state.formula_name) if st.session_state.formula_name in formula_names else 0
-)
-
-bottle_count = st.number_input(
-    "Bottle Count (Cantidad de Botellas)",
-    min_value=0,
-    step=1,
-    value=int(st.session_state.bottle_count)
-)
-
-weight_per_bottle = st.number_input(
-    "Weight per Bottle (Peso por Botella, lbs)",
-    min_value=0.0,
-    step=0.01,
-    format="%.2f",
-    value=float(st.session_state.weight_per_bottle)
-)
-
-bin_weight = st.number_input(
-    "Bin Gross Weight (Peso Bruto del Bin, lbs)",
-    min_value=0.0,
-    step=0.1,
-    format="%.2f",
-    value=float(st.session_state.bin_weight)
-)
-
-# Generate label
+# Handle label generation
 if st.button("Generate Label / Generar Etiqueta"):
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # Set up PDF
+    # Generate PDF
     width, height = landscape((6 * inch, 4 * inch))
     c = canvas.Canvas(PDF_FILE, pagesize=(width, height))
 
-    # Font and layout settings
     font = "Helvetica-Bold"
     font_size = 40
-    max_line_width = width - (1.0 * inch)
     line_spacing = 0.6 * inch
+    max_line_width = width - (1.0 * inch)
 
-    def split_lines(text, font, font_size, max_width, canvas_obj, max_lines=3):
+    def wrap_text(text, font, font_size, max_width, canvas_obj, max_lines=3):
         words = text.split()
-        lines = []
-        current_line = ""
+        lines, current_line = [], ""
         for word in words:
             trial = f"{current_line} {word}".strip()
             if canvas_obj.stringWidth(trial, font, font_size) <= max_width:
@@ -110,18 +83,16 @@ if st.button("Generate Label / Generar Etiqueta"):
         lines.append(current_line)
         return lines[:max_lines]
 
-    wrapped_lines = split_lines(formula_name.upper(), font, font_size, max_line_width, c, max_lines=3)
-    top = height - 0.75 * inch if len(wrapped_lines) == 3 else (height - 0.9 * inch if len(wrapped_lines) == 2 else height - 1.4 * inch)
+    wrapped_lines = wrap_text(formula_name.upper(), font, font_size, max_line_width, c)
+    top = height - (0.75 * inch if len(wrapped_lines) == 3 else 0.9 * inch if len(wrapped_lines) == 2 else 1.4 * inch)
 
     c.setFont(font, font_size)
     for i, line in enumerate(wrapped_lines):
         c.drawCentredString(width / 2, top - i * line_spacing, line)
 
-    # Bottle count
     c.setFont("Helvetica-Bold", 48)
     c.drawCentredString(width / 2, height - 2.4 * inch, str(bottle_count))
 
-    # Timestamp
     c.setFont("Helvetica", 20)
     c.drawCentredString(width / 2, height - 3.4 * inch, timestamp)
 
@@ -142,30 +113,32 @@ if st.button("Generate Label / Generar Etiqueta"):
         df = df._append(new_row, ignore_index=True)
     else:
         df = pd.DataFrame([new_row])
-
     df.to_csv(CSV_FILE, index=False)
 
-    st.success("✅ Label created and data saved! / Etiqueta creada y datos guardados")
-
-    # Store to reset next time
+    # Save session state for download step
     st.session_state.formula_name = formula_name
     st.session_state.bottle_count = bottle_count
     st.session_state.weight_per_bottle = weight_per_bottle
     st.session_state.bin_weight = bin_weight
-    st.session_state.generated = True
+    st.session_state.label_ready = True
+    st.success("✅ Label created and data saved! / Etiqueta creada y datos guardados")
 
-    # Download
+# Show download button only after generation
+if st.session_state.label_ready and os.path.exists(PDF_FILE):
     with open(PDF_FILE, "rb") as f:
-        st.download_button("📄 Download Label / Descargar Etiqueta", f, file_name="label.pdf")
+        if st.download_button("📄 Download Label / Descargar Etiqueta", f, file_name="label.pdf"):
+            # Clear form after download
+            for key in ["formula_name", "bottle_count", "weight_per_bottle", "bin_weight", "label_ready"]:
+                st.session_state[key] = defaults[key]
 
-# Spacer before admin section
+# Push admin tools down
 st.markdown("<br><br><br><br><br><br><br><br><br><br>", unsafe_allow_html=True)
 st.divider()
 
-# Admin CSV download
-if st.checkbox("🔒 Admin: Show CSV download / Mostrar descarga de CSV"):
+# Admin download section
+if st.checkbox("🔒 Admin: Show CSV download"):
     if os.path.exists(CSV_FILE):
         with open(CSV_FILE, "rb") as f:
-            st.download_button("📊 Download CSV Log / Descargar CSV", f, file_name="label_log.csv")
+            st.download_button("📊 Download CSV Log", f, file_name="label_log.csv")
     else:
-        st.info("No CSV file found yet. / No se encontró archivo CSV aún.")
+        st.info("No CSV file found yet.")
