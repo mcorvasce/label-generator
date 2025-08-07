@@ -22,7 +22,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Formula names
+# Shortened formula names
 formula_names = [
     "AP Citrus Carrot", "Apple Celery", "Better Mood Shot - FM",
     "Blue Sipper", "Breastfeeding - FM", "Calm - Bridal", "Celery Juice",
@@ -37,36 +37,31 @@ formula_names = [
     "Vanilla Cashew", "Yellow Sipper"
 ]
 
-# Initialize session state
-defaults = {
-    "formula_name": formula_names[0],
-    "bottle_count": 0,
-    "weight_per_bottle": 0.0,
-    "bin_weight": 0.0,
-    "label_ready": False,
-    "download_triggered": False
-}
-for key, val in defaults.items():
-    if key not in st.session_state:
-        st.session_state[key] = val
+# Session state defaults
+if "label_ready" not in st.session_state:
+    st.session_state.label_ready = False
+if "clear_form" not in st.session_state:
+    st.session_state.clear_form = False
 
-# Clear fields if download was triggered
-if st.session_state.download_triggered:
-    for key in ["formula_name", "bottle_count", "weight_per_bottle", "bin_weight", "label_ready"]:
-        st.session_state[key] = defaults[key]
-    st.session_state.download_triggered = False
+# Handle clearing
+if st.session_state.clear_form:
+    st.session_state.formula_name = formula_names[0]
+    st.session_state.bottle_count = 0
+    st.session_state.weight_per_bottle = 0.0
+    st.session_state.bin_weight = 0.0
+    st.session_state.label_ready = False
+    st.session_state.clear_form = False
 
 # Inputs
-formula_name = st.selectbox("Formula Name (Nombre de la Fórmula)", formula_names, index=formula_names.index(st.session_state.formula_name))
-bottle_count = st.number_input("Bottle Count (Cantidad de Botellas)", min_value=0, step=1, value=int(st.session_state.bottle_count))
-weight_per_bottle = st.number_input("Weight per Bottle (Peso por Botella, lbs)", min_value=0.0, step=0.01, format="%.2f", value=float(st.session_state.weight_per_bottle))
-bin_weight = st.number_input("Bin Gross Weight (Peso Bruto del Bin, lbs)", min_value=0.0, step=0.1, format="%.2f", value=float(st.session_state.bin_weight))
+formula_name = st.selectbox("Formula Name (Nombre de la Fórmula)", formula_names, key="formula_name")
+bottle_count = st.number_input("Bottle Count (Cantidad de Botellas)", min_value=0, step=1, key="bottle_count")
+weight_per_bottle = st.number_input("Weight per Bottle (Peso por Botella, lbs)", min_value=0.0, step=0.01, format="%.2f", key="weight_per_bottle")
+bin_weight = st.number_input("Bin Gross Weight (Peso Bruto del Bin, lbs)", min_value=0.0, step=0.1, format="%.2f", key="bin_weight")
 
-# Generate label
+# Generate Label
 if st.button("Generate Label / Generar Etiqueta"):
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # PDF generation
     width, height = landscape((6 * inch, 4 * inch))
     c = canvas.Canvas(PDF_FILE, pagesize=(width, height))
 
@@ -114,36 +109,32 @@ if st.button("Generate Label / Generar Etiqueta"):
         "Weight per Bottle": weight_per_bottle,
         "Bin Gross Weight": bin_weight
     }
-    if os.path.exists(CSV_FILE):
-        df = pd.read_csv(CSV_FILE)
+    if os.path.exists("label_log.csv"):
+        df = pd.read_csv("label_log.csv")
         df = df._append(new_row, ignore_index=True)
     else:
         df = pd.DataFrame([new_row])
-    df.to_csv(CSV_FILE, index=False)
+    df.to_csv("label_log.csv", index=False)
 
-    # Store state
-    st.session_state.formula_name = formula_name
-    st.session_state.bottle_count = bottle_count
-    st.session_state.weight_per_bottle = weight_per_bottle
-    st.session_state.bin_weight = bin_weight
     st.session_state.label_ready = True
     st.success("✅ Label created and data saved! / Etiqueta creada y datos guardados")
 
-# Show download button and clear after click
+# Show download + reset buttons
 if st.session_state.label_ready and os.path.exists(PDF_FILE):
     with open(PDF_FILE, "rb") as f:
-        if st.download_button("📄 Download Label / Descargar Etiqueta", f, file_name="label.pdf"):
-            st.session_state.download_triggered = True
-            st.rerun()
+        st.download_button("📄 Download Label / Descargar Etiqueta", f, file_name="label.pdf")
 
-# Spacer before admin section
-st.markdown("<br><br><br><br><br><br><br><br><br><br>", unsafe_allow_html=True)
+    st.markdown("✅ After printing, click below to start the next label:")
+    if st.button("➡️ Start Next Label / Comenzar Siguiente Etiqueta"):
+        st.session_state.clear_form = True
+        st.rerun()
+
+# Admin section
+st.markdown("<br><br><br><br><br><br><br>", unsafe_allow_html=True)
 st.divider()
-
-# Admin CSV download
-if st.checkbox("🔒 Admin: Show CSV download"):
-    if os.path.exists(CSV_FILE):
-        with open(CSV_FILE, "rb") as f:
-            st.download_button("📊 Download CSV Log", f, file_name="label_log.csv")
+if st.checkbox("🔒 Admin: Show CSV download / Mostrar descarga de CSV"):
+    if os.path.exists("label_log.csv"):
+        with open("label_log.csv", "rb") as f:
+            st.download_button("📊 Download CSV Log / Descargar CSV", f, file_name="label_log.csv")
     else:
-        st.info("No CSV file found yet.")
+        st.info("No CSV file found yet. / No se encontró archivo CSV aún.")
