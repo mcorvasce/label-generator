@@ -4,8 +4,7 @@ from reportlab.lib.pagesizes import landscape, inch
 import datetime
 import pandas as pd
 import os
-import pytz  # For timezone support
-import base64
+import pytz
 
 # Files
 CSV_FILE = "label_log.csv"
@@ -74,7 +73,6 @@ bin_weight = st.number_input("Bin Gross Weight (Peso Bruto del Bin, lbs)", min_v
 
 # Generate Label
 if st.button("Generate Label / Generar Etiqueta") and valid_selection:
-    # Use Eastern Time
     eastern = pytz.timezone("US/Eastern")
     timestamp = datetime.datetime.now(eastern).strftime("%Y-%m-%d %H:%M:%S")
 
@@ -136,27 +134,17 @@ if st.button("Generate Label / Generar Etiqueta") and valid_selection:
     st.session_state.label_ready = True
     st.success("✅ Label created and data saved! / Etiqueta creada y datos guardados")
 
-# Show download + print + reset buttons
+# Download and reset
 if st.session_state.label_ready and os.path.exists(PDF_FILE):
     with open(PDF_FILE, "rb") as f:
-        # Download button
         st.download_button("📄 Download Label / Descargar Etiqueta", f, file_name="label.pdf")
 
-        # Print button via PDF base64 viewer
-        base64_pdf = base64.b64encode(f.read()).decode('utf-8')
-        pdf_url = f"data:application/pdf;base64,{base64_pdf}"
-        st.markdown(
-            f'<a href="{pdf_url}" target="_blank">🖨️ Print Label / Imprimir Etiqueta</a>',
-            unsafe_allow_html=True
-        )
-
-    # Reset prompt
     st.markdown("✅ After printing, click below to start the next label  \n✅ **Después de imprimir, haga clic abajo para comenzar la siguiente etiqueta**")
     if st.button("➡️ Start Next Label / Comenzar Siguiente Etiqueta"):
         st.session_state.clear_form = True
         st.rerun()
 
-# Admin section (translations will be removed in future version)
+# Admin section (Spanish removal scheduled for future)
 st.markdown("<br><br><br><br><br><br><br>", unsafe_allow_html=True)
 st.divider()
 if st.checkbox("🔒 Admin: Show CSV download / Mostrar descarga de CSV"):
