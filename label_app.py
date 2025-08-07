@@ -22,7 +22,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Formula options
+# Formula names
 formula_names = [
     "AP Citrus Carrot", "Apple Celery", "Better Mood Shot - FM",
     "Blue Sipper", "Breastfeeding - FM", "Calm - Bridal", "Celery Juice",
@@ -37,17 +37,24 @@ formula_names = [
     "Vanilla Cashew", "Yellow Sipper"
 ]
 
-# Session state init
+# Initialize session state
 defaults = {
     "formula_name": formula_names[0],
     "bottle_count": 0,
     "weight_per_bottle": 0.0,
     "bin_weight": 0.0,
-    "label_ready": False
+    "label_ready": False,
+    "download_triggered": False
 }
 for key, val in defaults.items():
     if key not in st.session_state:
         st.session_state[key] = val
+
+# Clear fields if download was triggered
+if st.session_state.download_triggered:
+    for key in ["formula_name", "bottle_count", "weight_per_bottle", "bin_weight", "label_ready"]:
+        st.session_state[key] = defaults[key]
+    st.session_state.download_triggered = False
 
 # Inputs
 formula_name = st.selectbox("Formula Name (Nombre de la Fórmula)", formula_names, index=formula_names.index(st.session_state.formula_name))
@@ -55,11 +62,11 @@ bottle_count = st.number_input("Bottle Count (Cantidad de Botellas)", min_value=
 weight_per_bottle = st.number_input("Weight per Bottle (Peso por Botella, lbs)", min_value=0.0, step=0.01, format="%.2f", value=float(st.session_state.weight_per_bottle))
 bin_weight = st.number_input("Bin Gross Weight (Peso Bruto del Bin, lbs)", min_value=0.0, step=0.1, format="%.2f", value=float(st.session_state.bin_weight))
 
-# Handle label generation
+# Generate label
 if st.button("Generate Label / Generar Etiqueta"):
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # Generate PDF
+    # PDF generation
     width, height = landscape((6 * inch, 4 * inch))
     c = canvas.Canvas(PDF_FILE, pagesize=(width, height))
 
@@ -107,7 +114,6 @@ if st.button("Generate Label / Generar Etiqueta"):
         "Weight per Bottle": weight_per_bottle,
         "Bin Gross Weight": bin_weight
     }
-
     if os.path.exists(CSV_FILE):
         df = pd.read_csv(CSV_FILE)
         df = df._append(new_row, ignore_index=True)
@@ -115,7 +121,7 @@ if st.button("Generate Label / Generar Etiqueta"):
         df = pd.DataFrame([new_row])
     df.to_csv(CSV_FILE, index=False)
 
-    # Save session state for download step
+    # Store state
     st.session_state.formula_name = formula_name
     st.session_state.bottle_count = bottle_count
     st.session_state.weight_per_bottle = weight_per_bottle
@@ -123,19 +129,18 @@ if st.button("Generate Label / Generar Etiqueta"):
     st.session_state.label_ready = True
     st.success("✅ Label created and data saved! / Etiqueta creada y datos guardados")
 
-# Show download button only after generation
+# Show download button and clear after click
 if st.session_state.label_ready and os.path.exists(PDF_FILE):
     with open(PDF_FILE, "rb") as f:
         if st.download_button("📄 Download Label / Descargar Etiqueta", f, file_name="label.pdf"):
-            # Clear form after download
-            for key in ["formula_name", "bottle_count", "weight_per_bottle", "bin_weight", "label_ready"]:
-                st.session_state[key] = defaults[key]
+            st.session_state.download_triggered = True
+            st.rerun()
 
-# Push admin tools down
+# Spacer before admin section
 st.markdown("<br><br><br><br><br><br><br><br><br><br>", unsafe_allow_html=True)
 st.divider()
 
-# Admin download section
+# Admin CSV download
 if st.checkbox("🔒 Admin: Show CSV download"):
     if os.path.exists(CSV_FILE):
         with open(CSV_FILE, "rb") as f:
