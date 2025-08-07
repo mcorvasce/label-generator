@@ -11,7 +11,7 @@ CSV_FILE = "label_log.csv"
 st.set_page_config(page_title="Label Generator", layout="centered")
 st.title("📦 Bottle Bin Label Generator")
 
-# Hide +/- buttons on number inputs
+# Hide +/- steppers on number inputs
 hide_number_input_style = """
     <style>
     [data-testid="stNumberInput"] button {
@@ -42,27 +42,24 @@ bottle_count = st.number_input("Bottle Count", min_value=0, step=1)
 weight_per_bottle = st.number_input("Weight per Bottle (lbs)", min_value=0.0, step=0.01, format="%.2f")
 bin_weight = st.number_input("Bin Net Weight (lbs)", min_value=0.0, step=0.1, format="%.2f")
 
-# Create Label
+# Generate label + log
 if st.button("Generate Label"):
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # Generate PDF label
-    pdf = FPDF(orientation='P', unit='in', format=(4, 6))
+    # PDF: landscape 6x4, only values
+    pdf = FPDF(orientation='L', unit='in', format=(6, 4))
     pdf.add_page()
-    pdf.set_font("Arial", "B", 16)
-    pdf.cell(0, 0.5, "Bottle Bin Label", ln=True, align="C")
-    pdf.set_font("Arial", size=12)
-    pdf.cell(0, 0.4, f"Formula: {formula_name}", ln=True)
-    pdf.cell(0, 0.4, f"Bottle Count: {bottle_count}", ln=True)
-    pdf.cell(0, 0.4, f"Weight/Bottle: {weight_per_bottle} lbs", ln=True)
-    pdf.cell(0, 0.4, f"Bin Weight: {bin_weight} lbs", ln=True)
-    pdf.cell(0, 0.4, f"Timestamp: {timestamp}", ln=True)
+    pdf.set_font("Arial", "B", 30)
+    pdf.cell(0, 1, txt=formula_name.upper(), ln=True, align="C")
+    pdf.set_font("Arial", "B", 40)
+    pdf.cell(0, 1, txt=str(bottle_count), ln=True, align="C")
+    pdf.set_font("Arial", "", 18)
+    pdf.cell(0, 1, txt=timestamp, ln=True, align="C")
 
-    # Save label to PDF
     pdf_file = "label.pdf"
     pdf.output(pdf_file)
 
-    # Append data to CSV
+    # Full CSV logging
     new_row = {
         "Timestamp": timestamp,
         "Formula Name": formula_name,
@@ -79,9 +76,8 @@ if st.button("Generate Label"):
 
     df.to_csv(CSV_FILE, index=False)
 
-    # Success confirmation
-    st.success("✅ Label created and saved!")
+    # Confirmation and download
+    st.success("✅ Label created and data saved!")
 
-    # Only show PDF download (not CSV)
     with open(pdf_file, "rb") as f:
         st.download_button("📄 Download Label PDF", f, file_name="label.pdf")
