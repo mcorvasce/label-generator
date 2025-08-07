@@ -1,20 +1,19 @@
 import streamlit as st
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import landscape, inch
-from textwrap import wrap
 import datetime
 import pandas as pd
 import os
 
-# File paths
+# Output files
 CSV_FILE = "label_log.csv"
 PDF_FILE = "label.pdf"
 
-# Set up Streamlit
+# Streamlit setup
 st.set_page_config(page_title="Label Generator", layout="centered")
 st.title("📦 Bottle Bin Label Generator / Generador de Etiquetas para Bines")
 
-# Hide number input steppers
+# Hide number steppers
 st.markdown("""
     <style>
     [data-testid="stNumberInput"] button {
@@ -23,7 +22,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Dropdown options
+# Dropdown values
 formula_names = [
     "Almost Perfect Citrus Carrot", "Apple Celery", "Better Mood Shot - Functional Mother",
     "Blue Sipper", "Breastfeeding - Functional Mother", "Calm - Bridal", "Celery Juice",
@@ -38,44 +37,53 @@ formula_names = [
     "Vanilla Cashew", "Yellow Sipper"
 ]
 
-# Input fields (English + Spanish)
+# Inputs (bilingual)
 formula_name = st.selectbox("Formula Name (Nombre de la Fórmula)", formula_names)
 bottle_count = st.number_input("Bottle Count (Cantidad de Botellas)", min_value=0, step=1)
 weight_per_bottle = st.number_input("Weight per Bottle (Peso por Botella, lbs)", min_value=0.0, step=0.01, format="%.2f")
 bin_weight = st.number_input("Bin Gross Weight (Peso Bruto del Bin, lbs)", min_value=0.0, step=0.1, format="%.2f")
 
-# Generate label
+# Handle label creation
 if st.button("Generate Label / Generar Etiqueta"):
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # Create PDF with reportlab
+    # ReportLab PDF generation
     width, height = landscape((6 * inch, 4 * inch))
     c = canvas.Canvas(PDF_FILE, pagesize=(width, height))
 
-    # Formula wrapping and positioning
-    formula_font = "Helvetica-Bold"
-    formula_font_size = 40
-    side_margin = 0.5 * inch
-    max_text_width = width - 2 * side_margin
+    # === FORMAT TEXT ===
+    font = "Helvetica-Bold"
+    font_size = 40
+    max_line_width = width - (1.0 * inch)
+    line_spacing = 0.6 * inch
 
-    c.setFont(formula_font, formula_font_size)
-    wrapped_lines = []
-    for line in wrap(formula_name.upper(), width=40):
-        text_width = c.stringWidth(line, formula_font, formula_font_size)
-        if text_width <= max_text_width:
-            wrapped_lines.append(line)
-        else:
-            wrapped_lines += wrap(line, width=20)
-    wrapped_lines = wrapped_lines[:2]
+    # Dynamic wrapping based on text width
+    def split_lines(text, font, font_size, max_width, canvas_obj):
+        words = text.split()
+        lines = []
+        current_line = ""
+        for word in words:
+            trial = f"{current_line} {word}".strip()
+            if canvas_obj.stringWidth(trial, font, font_size) <= max_width:
+                current_line = trial
+            else:
+                lines.append(current_line)
+                current_line = word
+            if len(lines) == 1 and canvas_obj.stringWidth(current_line, font, font_size) > max_width:
+                lines.append(current_line)
+                return lines[:2]
+        lines.append(current_line)
+        return lines[:2]
 
-    # Adjust top margin based on line count
+    # Apply line logic
+    wrapped_lines = split_lines(formula_name.upper(), font, font_size, max_line_width, c)
     if len(wrapped_lines) == 1:
         top = height - 1.4 * inch
     else:
         top = height - 0.9 * inch
 
-    # Draw formula lines
-    line_spacing = 0.6 * inch
+    # Draw formula name
+    c.setFont(font, font_size)
     for i, line in enumerate(wrapped_lines):
         c.drawCentredString(width / 2, top - i * line_spacing, line)
 
@@ -87,6 +95,7 @@ if st.button("Generate Label / Generar Etiqueta"):
     c.setFont("Helvetica", 20)
     c.drawCentredString(width / 2, height - 3.4 * inch, timestamp)
 
+    # Save PDF
     c.showPage()
     c.save()
 
@@ -109,12 +118,11 @@ if st.button("Generate Label / Generar Etiqueta"):
 
     st.success("✅ Label created and data saved! / Etiqueta creada y datos guardados")
 
-    # PDF download
     with open(PDF_FILE, "rb") as f:
         st.download_button("📄 Download Label / Descargar Etiqueta", f, file_name="label.pdf")
 
-# Spacer to push admin tools down the page
-st.markdown("<br><br><br><br><br><br><br><br>", unsafe_allow_html=True)
+# Push admin tools way down
+st.markdown("<br><br><br><br><br><br><br><br><br><br>", unsafe_allow_html=True)
 st.divider()
 
 # Admin-only CSV download
