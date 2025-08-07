@@ -39,3 +39,42 @@ if st.button("Generate Label"):
     # PDF generation
     pdf = FPDF(orientation='P', unit='in', format=(4, 6))
     pdf.add_page()
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 0.5, "Bottle Bin Label", ln=True, align="C")
+    pdf.set_font("Arial", size=12)
+    pdf.cell(0, 0.4, f"Formula: {formula_name}", ln=True)
+    pdf.cell(0, 0.4, f"Bottle Count: {bottle_count}", ln=True)
+    pdf.cell(0, 0.4, f"Weight/Bottle: {weight_per_bottle} lbs", ln=True)
+    pdf.cell(0, 0.4, f"Bin Weight: {bin_weight} lbs", ln=True)
+    pdf.cell(0, 0.4, f"Timestamp: {timestamp}", ln=True)
+
+    # Save PDF
+    pdf_file = "label.pdf"
+    pdf.output(pdf_file)
+
+    # Append to CSV
+    new_row = {
+        "Timestamp": timestamp,
+        "Formula Name": formula_name,
+        "Bottle Count": bottle_count,
+        "Weight per Bottle": weight_per_bottle,
+        "Bin Weight": bin_weight
+    }
+
+    if os.path.exists(CSV_FILE):
+        df = pd.read_csv(CSV_FILE)
+        df = df._append(new_row, ignore_index=True)
+    else:
+        df = pd.DataFrame([new_row])
+
+    df.to_csv(CSV_FILE, index=False)
+
+    # Success message
+    st.success("✅ Label created and data saved!")
+
+    # Download buttons
+    with open(pdf_file, "rb") as f:
+        st.download_button("📄 Download Label PDF", f, file_name="label.pdf")
+
+    with open(CSV_FILE, "rb") as f:
+        st.download_button("📊 Download Full CSV Log", f, file_name="label_log.csv")
