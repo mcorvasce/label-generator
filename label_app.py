@@ -73,8 +73,8 @@ bin_weight = st.number_input("Bin Gross Weight (Peso Bruto del Bin, lbs)", min_v
 
 # Generate Label
 if st.button("Generate Label / Generar Etiqueta") and valid_selection:
-    eastern = pytz.timezone("US/Eastern")
-    timestamp = datetime.datetime.now(eastern).strftime("%Y-%m-%d %H:%M:%S")
+    eastern = pytz.zone("US/Eastern")
+    timestamp = datetime.datetime.now(pytz.timezone("US/Eastern")).strftime("%Y-%m-%d %H:%M:%S %Z")
 
     width, height = landscape((6 * inch, 4 * inch))
     c = canvas.Canvas(PDF_FILE, pagesize=(width, height))
