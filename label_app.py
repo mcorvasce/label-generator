@@ -24,8 +24,8 @@ st.markdown("""
 
 # Dropdown values
 formula_names = [
-    "Almost Perfect Citrus Carrot", "Apple Celery", "Better Mood Shot - Functional Mother",
-    "Blue Sipper", "Breastfeeding - Functional Mother", "Calm - Bridal", "Celery Juice",
+    "AP Citrus Carrot", "Apple Celery", "Better Mood Shot - FM",
+    "Blue Sipper", "Breastfeeding - FM", "Calm - Bridal", "Celery Juice",
     "Chocolate Cashew", "Chocolate Protein", "Citrus Carrot", "Citrus Mint",
     "Clementine Creamsicle", "Cookies & Cream", "Cool Greens", "Craving Crusher Shot",
     "Deblot - Bridal", "Detox - Bridal", "Energy - Bridal", "Ginger Turmeric", "Green Sipper",
