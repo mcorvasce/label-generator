@@ -118,9 +118,9 @@ st.markdown("<br><br><br><br><br><br><br><br>", unsafe_allow_html=True)
 st.divider()
 
 # Admin-only CSV download
-if st.checkbox("🔒 Admin: Show CSV download / Mostrar descarga de CSV"):
+if st.checkbox("🔒 Admin: Show CSV download"):
     if os.path.exists(CSV_FILE):
         with open(CSV_FILE, "rb") as f:
             st.download_button("📊 Download CSV Log / Descargar CSV", f, file_name="label_log.csv")
     else:
-        st.info("No CSV file found yet. / No se encontró archivo CSV aún.")
+        st.info("No CSV file found yet.")
