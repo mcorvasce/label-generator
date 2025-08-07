@@ -11,6 +11,16 @@ CSV_FILE = "label_log.csv"
 st.set_page_config(page_title="Label Generator", layout="centered")
 st.title("📦 Bottle Bin Label Generator")
 
+# Hide +/- buttons on number inputs
+hide_number_input_style = """
+    <style>
+    [data-testid="stNumberInput"] button {
+        display: none;
+    }
+    </style>
+"""
+st.markdown(hide_number_input_style, unsafe_allow_html=True)
+
 # Dropdown for formula names
 formula_names = [
     "Almost Perfect Citrus Carrot", "Apple Celery", "Better Mood Shot - Functional Mother",
@@ -36,7 +46,7 @@ bin_weight = st.number_input("Bin Net Weight (lbs)", min_value=0.0, step=0.1, fo
 if st.button("Generate Label"):
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # PDF generation
+    # Generate PDF label
     pdf = FPDF(orientation='P', unit='in', format=(4, 6))
     pdf.add_page()
     pdf.set_font("Arial", "B", 16)
@@ -48,11 +58,11 @@ if st.button("Generate Label"):
     pdf.cell(0, 0.4, f"Bin Weight: {bin_weight} lbs", ln=True)
     pdf.cell(0, 0.4, f"Timestamp: {timestamp}", ln=True)
 
-    # Save PDF
+    # Save label to PDF
     pdf_file = "label.pdf"
     pdf.output(pdf_file)
 
-    # Append to CSV
+    # Append data to CSV
     new_row = {
         "Timestamp": timestamp,
         "Formula Name": formula_name,
@@ -69,12 +79,9 @@ if st.button("Generate Label"):
 
     df.to_csv(CSV_FILE, index=False)
 
-    # Success message
-    st.success("✅ Label created and data saved!")
+    # Success confirmation
+    st.success("✅ Label created and saved!")
 
-    # Download buttons
+    # Only show PDF download (not CSV)
     with open(pdf_file, "rb") as f:
         st.download_button("📄 Download Label PDF", f, file_name="label.pdf")
-
-    with open(CSV_FILE, "rb") as f:
-        st.download_button("📊 Download Full CSV Log", f, file_name="label_log.csv")
