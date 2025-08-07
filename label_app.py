@@ -1,16 +1,18 @@
 import streamlit as st
 from fpdf import FPDF
 import datetime
-import requests
+import pandas as pd
+import os
 
+# CSV file name
+CSV_FILE = "label_log.csv"
+
+# Set up Streamlit
 st.set_page_config(page_title="Label Generator", layout="centered")
-st.title("📦 4x6 Label Generator")
+st.title("📦 Bottle Bin Label Generator")
 
-# NoCodeAPI endpoint (from Streamlit secrets)
-NOCODE_API_URL = st.secrets["nocode_api_url"]
-
-# Dropdown options
-formulas = [
+# Dropdown for formula names
+formula_names = [
     "Almost Perfect Citrus Carrot", "Apple Celery", "Better Mood Shot - Functional Mother",
     "Blue Sipper", "Breastfeeding - Functional Mother", "Calm - Bridal", "Celery Juice",
     "Chocolate Cashew", "Chocolate Protein", "Citrus Carrot", "Citrus Mint",
@@ -24,47 +26,16 @@ formulas = [
     "Vanilla Cashew", "Yellow Sipper"
 ]
 
-# Form for user inputs
-with st.form("label_form"):
-    formula = st.selectbox("Formula Name", formulas)
-    weight = st.text_input("Weight of One Bottle (lbs)", placeholder="e.g., 2.3")
-    net_weight = st.text_input("Bin Net Weight (lbs)", placeholder="e.g., 524")
-    count = st.text_input("Bottle Count", placeholder="e.g., 228")
-    submitted = st.form_submit_button("Generate Label")
+# User inputs
+formula_name = st.selectbox("Formula Name", formula_names)
+bottle_count = st.number_input("Bottle Count", min_value=0, step=1)
+weight_per_bottle = st.number_input("Weight per Bottle (lbs)", min_value=0.0, step=0.01, format="%.2f")
+bin_weight = st.number_input("Bin Net Weight (lbs)", min_value=0.0, step=0.1, format="%.2f")
 
-if submitted:
-    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+# Create Label
+if st.button("Generate Label"):
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # Generate PDF label
-    pdf = FPDF("P", "in", (4, 6))
+    # PDF generation
+    pdf = FPDF(orientation='P', unit='in', format=(4, 6))
     pdf.add_page()
-    pdf.set_font("Arial", size=12)
-
-    pdf.cell(0, 0.4, f"Formula: {formula}", ln=1)
-    pdf.cell(0, 0.4, f"Bottle Weight: {weight} lbs", ln=1)
-    pdf.cell(0, 0.4, f"Bin Net Weight: {net_weight} lbs", ln=1)
-    pdf.cell(0, 0.4, f"Bottle Count: {count}", ln=1)
-    pdf.cell(0, 0.4, f"Date: {now}", ln=1)
-
-    pdf_output = pdf.output(dest="S").encode("latin-1")
-
-    # Log to Google Sheet via NoCodeAPI
-    try:
-        payload = {
-            "data": [[now, formula, weight, net_weight, count]]
-        }
-        response = requests.post(NOCODE_API_URL, json=payload)
-        if response.status_code == 200:
-            st.success("✅ Label generated and logged successfully.")
-        else:
-            st.warning("⚠️ Label created, but failed to log to sheet.")
-    except Exception as e:
-        st.warning(f"⚠️ Error logging to sheet: {e}")
-
-    # Download button
-    st.download_button(
-        label="Download 4x6 Label PDF",
-        data=pdf_output,
-        file_name=f"label_{formula}_{now}.pdf",
-        mime="application/pdf"
-    )
