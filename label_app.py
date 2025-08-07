@@ -1,26 +1,27 @@
 import streamlit as st
-from fpdf import FPDF
+from reportlab.pdfgen import canvas
+from reportlab.lib.pagesizes import landscape, inch
+from textwrap import wrap
 import datetime
 import pandas as pd
 import os
-import math
 
-# CSV file name
+# File paths
 CSV_FILE = "label_log.csv"
+PDF_FILE = "label.pdf"
 
 # Set up Streamlit
 st.set_page_config(page_title="Label Generator", layout="centered")
-st.title("📦 Bottle Bin Label Generator")
+st.title("📦 Bottle Bin Label Generator / Generador de Etiquetas para Bines")
 
-# Hide +/- buttons
-hide_number_input_style = """
+# Hide number input steppers
+st.markdown("""
     <style>
     [data-testid="stNumberInput"] button {
         display: none;
     }
     </style>
-"""
-st.markdown(hide_number_input_style, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
 # Dropdown options
 formula_names = [
@@ -37,50 +38,53 @@ formula_names = [
     "Vanilla Cashew", "Yellow Sipper"
 ]
 
-# Inputs
-formula_name = st.selectbox("Formula Name", formula_names)
-bottle_count = st.number_input("Bottle Count", min_value=0, step=1)
-weight_per_bottle = st.number_input("Weight per Bottle (lbs)", min_value=0.0, step=0.01, format="%.2f")
-bin_weight = st.number_input("Bin Net Weight (lbs)", min_value=0.0, step=0.1, format="%.2f")
+# Input fields (English + Spanish)
+formula_name = st.selectbox("Formula Name (Nombre de la Fórmula)", formula_names)
+bottle_count = st.number_input("Bottle Count (Cantidad de Botellas)", min_value=0, step=1)
+weight_per_bottle = st.number_input("Weight per Bottle (Peso por Botella, lbs)", min_value=0.0, step=0.01, format="%.2f")
+bin_weight = st.number_input("Bin Net Weight (Peso Neto del Bin, lbs)", min_value=0.0, step=0.1, format="%.2f")
 
-# Custom class to enable rotation in FPDF
-class PDF(FPDF):
-    def rotate(self, angle, x=None, y=None):
-        if x is None:
-            x = self.x
-        if y is None:
-            y = self.y
-        self._out(f'q {math.cos(math.radians(angle)):.5f} {math.sin(math.radians(angle)):.5f} '
-                  f'{-math.sin(math.radians(angle)):.5f} {math.cos(math.radians(angle)):.5f} '
-                  f'{x * self.k:.2f} {y * self.k:.2f} cm')
-    
-    def rotate_text(self, x, y, txt, angle, font_size=12, font_weight='', align='C'):
-        self.rotate(angle, x, y)
-        self.set_xy(x, y)
-        self.set_font("Arial", font_weight, font_size)
-        self.cell(0, 0, txt, align=align)
-        self._out('Q')  # reset rotation
-
-# Label generation
-if st.button("Generate Label"):
+# Generate label
+if st.button("Generate Label / Generar Etiqueta"):
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # PDF 6x4 inches, landscape
-    pdf = PDF(orientation='L', unit='in', format=(6, 4))
-    pdf.add_page()
+    # Create PDF with reportlab
+    width, height = landscape((6 * inch, 4 * inch))
+    c = canvas.Canvas(PDF_FILE, pagesize=(width, height))
 
-    # Rotated text
-    center_x = 3  # middle of 6-inch width
-    center_y = 2  # middle of 4-inch height
+    # Wrap and center formula name (up to 2 lines)
+    formula_font = "Helvetica-Bold"
+    formula_font_size = 40
+    padding = 0.5 * inch
+    max_text_width = width - 2 * padding
 
-    pdf.rotate_text(center_x, center_y - 0.8, formula_name.upper(), angle=90, font_size=26, font_weight='B')
-    pdf.rotate_text(center_x, center_y, str(bottle_count), angle=90, font_size=36, font_weight='B')
-    pdf.rotate_text(center_x, center_y + 0.8, timestamp, angle=90, font_size=16, font_weight='')
+    c.setFont(formula_font, formula_font_size)
+    wrapped_lines = []
+    for line in wrap(formula_name.upper(), width=40):
+        text_width = c.stringWidth(line, formula_font, formula_font_size)
+        if text_width <= max_text_width:
+            wrapped_lines.append(line)
+        else:
+            wrapped_lines += wrap(line, width=20)
+    wrapped_lines = wrapped_lines[:2]
 
-    pdf_file = "label.pdf"
-    pdf.output(pdf_file)
+    top = height - 0.75 * inch
+    line_spacing = 0.6 * inch
+    for i, line in enumerate(wrapped_lines):
+        c.drawCentredString(width / 2, top - i * line_spacing, line)
 
-    # Append full data to CSV
+    # Bottle count
+    c.setFont("Helvetica-Bold", 48)
+    c.drawCentredString(width / 2, height - 2.4 * inch, str(bottle_count))
+
+    # Timestamp
+    c.setFont("Helvetica", 20)
+    c.drawCentredString(width / 2, height - 3.4 * inch, timestamp)
+
+    c.showPage()
+    c.save()
+
+    # Save to CSV
     new_row = {
         "Timestamp": timestamp,
         "Formula Name": formula_name,
@@ -97,8 +101,16 @@ if st.button("Generate Label"):
 
     df.to_csv(CSV_FILE, index=False)
 
-    # UI confirmation
-    st.success("✅ Label created and data saved!")
+    st.success("✅ Label created and data saved! / Etiqueta creada y datos guardados")
 
-    with open(pdf_file, "rb") as f:
-        st.download_button("📄 Download Rotated Label PDF", f, file_name="label.pdf")
+    # PDF download
+    with open(PDF_FILE, "rb") as f:
+        st.download_button("📄 Download Label / Descargar Etiqueta", f, file_name="label.pdf")
+
+# Admin-only CSV download
+if st.checkbox("🔒 Admin: Show CSV download / Mostrar descarga de CSV"):
+    if os.path.exists(CSV_FILE):
+        with open(CSV_FILE, "rb") as f:
+            st.download_button("📊 Download CSV Log / Descargar CSV", f, file_name="label_log.csv")
+    else:
+        st.info("No CSV file found yet. / No se encontró archivo CSV aún.")
